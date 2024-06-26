@@ -3,9 +3,9 @@ import cvxpy as cp
 import numpy as np
 import gurobipy
 
-Nb = 100 # number of blocks
+Nb = 300 # number of blocks
 Ng = 10 # number of GPUs
-Nm = 20 # maximum number of blocks per GPU
+Nm = 40 # maximum number of blocks per GPU
 
 M = 1e7 # big-ass number
 
@@ -13,6 +13,7 @@ c = np.random.rand(Nb,1) # computational cost per block
 tau = np.random.rand(Ng,Ng) # cost of communicating between blocks 
 tau = np.zeros((Ng,Ng))
 tau[5,6] = 10
+tau[0,6] = 10
 # a dictionary containing blocks which communicate
 comm = {}
 for i in range(Nb):
