@@ -3,10 +3,16 @@ import cvxpy as cp
 import numpy as np
 import gurobipy
 
-Ns = 31 # number of slices
+
 Nm = 60 # maximum number of blocks per GPU
 
 M = 1e7 # big-ass number
+
+ngpu_perslice = np.load('initialdata/nr_gpus_slice.npy')
+Ns = len(ngpu_perslice) # number of slices
+
+global_ng = 0 # 
+gpu_assign = []
 
 for s in range(Ns):
     c = np.load('initialdata/cost_slice'+str(s)+'.npy')
@@ -14,7 +20,7 @@ for s in range(Ns):
     theta = np.load('initialdata/x2_slice'+str(s)+'.npy')
     
     Nb = len(c) # number of blocks
-    Ng = 12 # number of GPUs
+    Ng = ngpu_perslice[s] # number of GPUs
 
 
 
@@ -37,6 +43,8 @@ for s in range(Ns):
     #R_pos = np.zeros((Ng,Nb*Ng))
     R_pos = np.zeros((Ng*Nb,Nb*Ng))
     T_pos = np.zeros((Ng*Nb,Nb*Ng))
+    
+    Bmap = np.zeros((Nb,Nb*Ng))
 
     for i in range(Nb):
         for j in range(Ng):
@@ -46,6 +54,7 @@ for s in range(Ns):
             CopyBlock[i+j*Nb,i] = 1.0
             R_pos[i+j*Nb,i+j*Nb] = r[i]
             T_pos[i+j*Nb,i+j*Nb] = theta[i]
+            Bmap[i,i+j*Nb] = j
 
     C = 1.5*np.sum(c)/Ng                
 
@@ -62,3 +71,13 @@ for s in range(Ns):
 
 
     prob.solve(solver=cp.GUROBI)
+    
+    gpu = Bmap@x.value
+    for i in range(Nb):
+        gpu_assign.append(int(np.round(gpu[i])+global_ng))
+        
+    global_ng += Ng
+print(max(gpu_assign))
+np.save('GPUs_constance.npy',np.array(gpu_assign))
+    
+    
