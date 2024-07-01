@@ -3,15 +3,15 @@ import cvxpy as cp
 import numpy as np
 import gurobipy
 
-Nb = 300 # number of blocks
-Ng = 10 # number of GPUs
+Nb = 192 # number of blocks
+Ng = 12 # number of GPUs
 Nm = 60 # maximum number of blocks per GPU
 
 M = 1e7 # big-ass number
 
-c = np.load('initialdata/cost.npy')[:Nb]
-r = np.load('initialdata/x1.npy')[:Nb]
-theta = np.load('initialdata/x2.npy')[:Nb]
+c = np.load('initialdata/cost_slice.npy')
+r = np.load('initialdata/x1_slice.npy')
+theta = np.load('initialdata/x2_slice.npy')
 #np.random.rand(Nb,1) # computational cost per block
 #r = np.random.rand(Nb,1) # r position per block
 #theta = np.random.rand(Nb,1) # r position per block
