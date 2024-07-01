@@ -9,9 +9,12 @@ Nm = 60 # maximum number of blocks per GPU
 
 M = 1e7 # big-ass number
 
-c = np.random.rand(Nb,1) # computational cost per block
-r = np.random.rand(Nb,1) # r position per block
-theta = np.random.rand(Nb,1) # r position per block
+c = np.load('initialdata/cost.npy')[:Nb]
+r = np.load('initialdata/x1.npy')[:Nb]
+theta = np.load('initialdata/x2.npy')[:Nb]
+#np.random.rand(Nb,1) # computational cost per block
+#r = np.random.rand(Nb,1) # r position per block
+#theta = np.random.rand(Nb,1) # r position per block
 
 # decision variables
 x = cp.Variable(Nb*Ng,boolean=True) # stacked x11 x12 .. xNbxNg
@@ -42,9 +45,9 @@ for i in range(Nb):
         R_pos[i+j*Nb,i+j*Nb] = r[i]
         T_pos[i+j*Nb,i+j*Nb] = theta[i]
 
-                
+C = 1.5*np.sum(c)/Ng                
 
-prob = cp.Problem(cp.Minimize(C),#+r_p@np.ones((Ng,1))+r_m@np.ones((Ng,1))),
+prob = cp.Problem(cp.Minimize(r_p@np.ones((Ng,1))+r_m@np.ones((Ng,1))),
                   [SumGPU@x == 1,
                    SumBlock@x <= Nm,
                    CostPerGPU@x <= C,
@@ -52,10 +55,6 @@ prob = cp.Problem(cp.Minimize(C),#+r_p@np.ones((Ng,1))+r_m@np.ones((Ng,1))),
                    R_pos@x >= SumBlock.T@r_av - SumBlock.T@r_m - M*(1-x),
                    T_pos@x <= SumBlock.T@theta_av + SumBlock.T@t_p + M*(1-x),
                    T_pos@x >= SumBlock.T@theta_av - SumBlock.T@t_m - M*(1-x),
-                   #R_pos@x <= r_av + r_p - r_m + M*R_pos@(1-x),
-                   #R_pos@x >= r_av + r_p - r_m - M*R_pos@(1-x),
-                   #T_pos@x <= theta_av + t_p - t_m + M*T_pos@(1-x),
-                   #T_pos@x >= theta_av + t_p - t_m - M*T_pos@(1-x),
                    r_p >= 0, r_m >= 0, t_p >= 0, t_m >= 0])
 
 
