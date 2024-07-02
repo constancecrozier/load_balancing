@@ -13,6 +13,11 @@ Ns = len(ngpu_perslice) # number of slices
 
 global_ng = 0 # 
 gpu_assign = []
+cost_per_gpu = []
+block_per_gpu = []
+
+cost_var = 0.1 # % variation in load between GPUs
+block_var = 0.5 # % variation in the number of blocks per GPU
 
 for s in range(Ns):
     c = np.load('initialdata/cost_slice'+str(s)+'.npy')
@@ -26,7 +31,7 @@ for s in range(Ns):
 
     # decision variables
     x = cp.Variable(Nb*Ng,boolean=True) # stacked x11 x12 .. xNbxNg
-    C = cp.Variable() # heaviest GPU
+    #C = cp.Variable() # heaviest GPU
     r_av = cp.Variable(Ng) # average r position of the blocks on the GPU
     r_p = cp.Variable(Ng) # 
     r_m = cp.Variable(Ng) # 
@@ -56,12 +61,15 @@ for s in range(Ns):
             T_pos[i+j*Nb,i+j*Nb] = theta[i]
             Bmap[i,i+j*Nb] = j
 
-    C = 1.5*np.sum(c)/Ng                
+    Cav = np.sum(c)/Ng
+    Nav = Nb/Ng
 
     prob = cp.Problem(cp.Minimize(r_p@np.ones((Ng,1))+r_m@np.ones((Ng,1))),
                       [SumGPU@x == 1,
-                       SumBlock@x <= Nm,
-                       CostPerGPU@x <= C,
+                       SumBlock@x <= Nav*(1+block_var),
+                       SumBlock@x >= Nav*(1-block_var),
+                       CostPerGPU@x <= (1+cost_var)*Cav,
+                       CostPerGPU@x >= (1-cost_var)*Cav,
                        R_pos@x <= SumBlock.T@r_av + SumBlock.T@r_p + M*(1-x),
                        R_pos@x >= SumBlock.T@r_av - SumBlock.T@r_m - M*(1-x),
                        T_pos@x <= SumBlock.T@theta_av + SumBlock.T@t_p + M*(1-x),
@@ -73,11 +81,28 @@ for s in range(Ns):
     prob.solve(solver=cp.GUROBI)
     
     gpu = Bmap@x.value
+    
     for i in range(Nb):
         gpu_assign.append(int(np.round(gpu[i])+global_ng))
         
     global_ng += Ng
-print(max(gpu_assign))
+    
+    cost_per_gpu += list(CostPerGPU@x.value)
+    block_per_gpu += list(SumBlock@x.value)
+
+print('COST')
+print(max(cost_per_gpu))
+print(min(cost_per_gpu))
+print(sum(cost_per_gpu)/len(cost_per_gpu))
+print(sum(cost_per_gpu))
+
+print('Blocks')
+print(max(block_per_gpu))
+print(min(block_per_gpu))
+print(sum(block_per_gpu)/len(block_per_gpu))
+print(sum(block_per_gpu))
+
+
 np.save('GPUs_constance.npy',np.array(gpu_assign))
     
     
